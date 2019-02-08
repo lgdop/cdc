@@ -162,7 +162,7 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
       os.system('git checkout '+adding_rm_branch)
       for each_commit in file_specific_send_commit_list:
         if each_commit.strip() != sending_rm_HEAD.strip():
-          os.system('git cherry-pick --no-commit -Xours '+each_commit)
+          os.system('git cherry-pick --no-commit -Xtheirs '+each_commit)
 
       con_sha_msg='"Consolidating '+rm_to_be_sent[3:]+' for '+rm_to_be_added+'"'
       os.system('git commit -m '+con_sha_msg)
