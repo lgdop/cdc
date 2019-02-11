@@ -17,7 +17,7 @@ RUN pip2.7 install dash==0.35.1 \
                 gunicorn
 
 COPY . .
-RUN mv /usr/bin/git /usr/bin/git_old && cd /usr/bin && ln -s /usr/local/bin/git git
+RUN mv /usr/bin/git /usr/bin/git_old && cd /usr/bin && ln -s /usr/local/bin/git/bin/git git
 
 EXPOSE 3000
 
