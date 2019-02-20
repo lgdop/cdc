@@ -1,0 +1,22 @@
+body
+{
+	font-family: Arial, Helvetica, sans-serif;
+	/*width:970px;*/
+	margin: auto;
+	font-size: 13px;
+	background-color: #F0FFF0;
+	
+
+}
+.head-conatiner
+{
+	height: 100px;
+	font-weight: bold;
+	font-size: 1.5em;
+	text-align: center;
+	/*border: 1px solid #000000;*/
+	background-color: #F0FFF0;
+	/*color: #7FFFD4;*/
+	/*padding-top: 30px;*/
+}
+
