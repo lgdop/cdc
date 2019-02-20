@@ -245,7 +245,7 @@ app.layout = html.Div([
         html.Link(href='/static/cdc_layout_style.css', rel='stylesheet'),
     html.Div([
         html.Img(
-        src='/static/img/Accenture-logo-red.png',
+        src='/img/Accenture-logo-red.png',
         style={
             'height' : '100%',
             'width' : '12%',
@@ -259,7 +259,7 @@ app.layout = html.Div([
            ],style={'padding-left':'400px','display':'inline-block','float':'left'}),
     #html.Br(),
         html.Img(
-        src='/static/img/logo-client-liberty-color.png',
+        src='/img/logo-client-liberty-color.jpg',
         style={
             'height' : '100%',
             'width' : '12%',
