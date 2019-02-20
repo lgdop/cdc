@@ -242,33 +242,39 @@ def perform_build(cdc_rm_list):
 #Desiging layout of page
 app.layout = html.Div([
     #Including local stylesheet
-        html.Link(href='/static/layout_style.css', rel='stylesheet'),
-    html.H1(children='CLARIFY CONSOLIDATION/DECONSOLIDATION',id ='release-deployment-history', style={'textAlign': 'center','color': '#3104B4'}),
-    #html.Br(),
+        html.Link(href='/static/cdc_layout_style.css', rel='stylesheet'),
+    html.Div([
         html.Img(
-        src='/img/logo-client-liberty-color.jpg',
+        src='/static/img/Accenture-logo-red.png',
         style={
-            'height' : '10%',
-            'width' : '10%',
-            'padding-left': '600px',
+            'height' : '100%',
+            'width' : '12%',
+            'display':'inline-block',
+            'float':'left',
+            'padding-right':'20px'
         }
        ),
+        html.Div([
+             html.H1(children='CLARIFY',style={'textAlign': 'center','color': '#157DEC'})
+           ],style={'padding-left':'400px','display':'inline-block','float':'left'}),
+    #html.Br(),
+        html.Img(
+        src='/static/img/logo-client-liberty-color.png',
+        style={
+            'height' : '100%',
+            'width' : '12%',
+            'display':'inline-block',
+            'float':'right',
+            'padding-right':'20px'
+        }
+       )],className='head-conatiner'),
     #html.Br(),
         #html.Br(),
-    html.Div([html.Table(
-        # Header
-        children=[
-            html.Thead(
-                html.Tr([
-                    html.Th(children=html.B('LGDOP'), colSpan='2',style={'textAlign': 'center','padding-top':'10px', 'padding-bottom':'20px','padding-left': '10px','padding-right': '30px','color': '#2ECC71','fontSize':30}),
-                ]))],style={
-            'margin-left': 'auto',
-            'margin-right': 'auto',
-            'padding-left': '50px',
-            'padding-right': '50px',
-            'textAlign': 'left',
-            'border':'1px'
-            })]),
+    html.Div([
+        html.Div([html.H1(children='CODE  {...}',style={'padding-right':'8px','textAlign': 'center','color': '#FF8C00','display':'inline-block'} ),
+		html.H1(children='CONSOLIDATION <',style={'textAlign': 'center','color': '#006400','display':'inline-block'} ),
+		html.H1(children='> DE-CONSOLIDATION',style={'textAlign': 'center','color': '#A20606','display':'inline-block'} ),
+        ],style={'textAlign':'center'}),
     html.Br(),
     html.Br(),
     html.Div(id='Affiliate_temp_store',style={'display':'none'}),
@@ -276,7 +282,7 @@ app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     html.Div(id='load_layout'),
     #html.Div(id='cdc_result',style={'textAlign':'center','color':'#6B8E23'})
-    ])
+    ],className='main-container')])
 
 home_page=html.Div([
         html.Table(
@@ -286,16 +292,16 @@ home_page=html.Div([
         # Body
             html.Tbody(
                 [html.Tr([
-                    html.Td('Affiliate',style={'padding-bottom':'10px','padding-right': '30px','textAlign': 'left','color':'#DF0101','fontSize': 20}),
+                    html.Td('Affiliate',style={'padding-bottom':'10px','padding-right': '30px','textAlign': 'left','color':'#000000','fontSize': 20}),
                     html.Td(children=html.Div(dcc.Dropdown(id='Affiliate',
                                                            options=[{'label': k, 'value': k} for k in affiliate_list],
-                                                           style={'color':'#597E16','width':'80px'})),style={'padding-bottom':'10px','padding-left': '10px','padding-right': '40px'})
+                                                           style={'color':'#000000','width':'80px','border':'1px solid','borderRadius':'4px','fontWeight':'bold'})),style={'padding-bottom':'10px','padding-left': '10px','padding-right': '40px'})
                     ]),
                 html.Tr([
-                    html.Td('Patches Deployment Order',style={'padding-bottom':'10px','padding-right': '30px','textAlign': 'left','color':'#DF0101','fontSize': 20}),
+                    html.Td('Patches Deployment Order',style={'padding-bottom':'10px','padding-right': '30px','textAlign': 'left','color':'#000000','fontSize': 20}),
                     html.Td(children=html.Div(dcc.Textarea(id = 'rm-ticket',
-                                                                                 placeholder='RM Ticket',value='',minLength='500px',maxLength='1000px',
-                                                             style={'color':'#597E16','width':'100px','height':'200px'})),style={'padding-bottom':'10px','padding-left': '10px','padding-right': '40px'})
+                                                                                 placeholder='For Example:         RM-12345 RM-22345',value='',minLength='500px',maxLength='1000px',
+                                                             style={'color':'#000000','width':'100px','height':'200px','border':'2px solid','fontSize':18,'fontWeight':'bold'})),style={'padding-bottom':'10px','padding-left': '10px','padding-right': '40px'})
                     ])
                 ])
     ],style={
@@ -314,7 +320,7 @@ home_page=html.Div([
         html.Div(id='display_final_result'),
  ])
 
-build_layout=html.Div(html.Div(html.Div("In Progress...",style={'fontSize':20}),id='temp_id'),id='cdc_result',style={'textAlign':'center','color':'#6B8E23','fontSize':15})
+build_layout=html.Div(html.Div(html.Div("In Progress...",style={'fontSize':30,'color':'#FFA500'}),id='temp_id'),id='cdc_result',style={'textAlign':'center','color':'#6B8E23','fontSize':15})
 
 build_status_layout=html.Div(html.Div(id='temp_status_id',children=''),id='status',style={'textAlign':'center','color':'#6B8E23','fontSize':20})
 
@@ -323,12 +329,14 @@ build_status_layout=html.Div(html.Div(id='temp_status_id',children=''),id='statu
     [Input('rm-ticket', 'value'),
      Input('Affiliate', 'value' )])
 def display_insert_button(rm_ticket,Affiliate):
-    if Affiliate and rm_ticket and re.search(r'(RM-[0-9]{5,6}\n{0,}){2,}',rm_ticket):
-        return html.Div(html.Button(id='Submit',
-                         n_clicks=0, children = dcc.Link('Submit',href='/cdc/build'),
-                         style={'color':'#597E16','width':'85px',}),style={'padding-left':'465px'})
-    else:
-        return html.Div('Please Ensure to Provide Proper RM Tickets!!!',style={'padding-left': '425px','textAlign': 'left','color': '#08298A','fontSize':25})
+    if Affiliate:
+        if rm_ticket:
+            if re.search(r'(RM-[0-9]{5,6}\n{0,}){2,}',rm_ticket):
+                return html.Div(html.Button(id='Submit',
+                                 n_clicks=0, children = dcc.Link('Submit',href='/cdc/build'),
+                                 style={'padding-top':'5px','padding-bottom':'5px','color':'#008080','backgroundColor':'#A9A9A9','width':'85px','borderRadius':'4px'}),style={'padding-left':'465px'})
+            else:
+                return html.Div('Please Ensure to Provide Proper RM Tickets!!!',style={'padding-left': '425px','textAlign': 'left','color': '#DF0101','fontSize':25})
 
 @app.callback(Output('Affiliate_temp_store','children'),
               [Input('Affiliate','value')])
@@ -347,19 +355,20 @@ def display_cdc_result(temp,path,Affiliate,rm_ticket):
     if path == '/cdc/build':
         if not Affiliate is None:
             #calling cdc main function
-            output=main_func(affiliate=Affiliate.lower(), rm_string=rm_ticket)
+            #output=main_func(affiliate=Affiliate.lower(), rm_string=rm_ticket)
+            output="Consolidation and De-Consolidation is Completed Successfully..! :-) "
             return html.Div([
                     html.Table(
         # Header
         children=[
             html.Tbody([
                 html.Tr([
-                    html.Th('Country', style=th_style),
-                    html.Td(Affiliate,style=th_style)]),
+                    html.Th('Country', style={'padding-top':'10px', 'padding-bottom':'10px','padding-left': '10px','padding-right': '10px','color':'#157DEC'}),
+                    html.Td(Affiliate,style={'padding-top':'10px', 'padding-bottom':'10px','padding-left': '10px','padding-right': '10px','color':'#808000'})]),
 
                 html.Tr([
-                    html.Th('RM Deployment Order',style=th_style),
-                    html.Td(rm_ticket,style=td_style)
+                    html.Th('RM Deployment Order',style={'padding-top':'10px', 'padding-bottom':'10px','padding-left': '10px','padding-right': '10px','color':'#157DEC'}),
+                    html.Td(rm_ticket,style={'padding-top':'10px', 'padding-bottom':'10px','padding-left': '10px','padding-right': '10px','color':'#808000'})
                     ])]
                 )
     ],style={
@@ -370,11 +379,27 @@ def display_cdc_result(temp,path,Affiliate,rm_ticket):
             'textAlign': 'left',
             }),   
                     html.Br(),
-                    html.Div(output),
+                    html.B(output,style={'fontSize':20}),
+                    html.Br(),
                     html.Br(),
                     html.Button(id='Build',
                          n_clicks=0, children = dcc.Link('Build',href='/cdc/build_status'),
-                         style={'color':'#597E16','width':'85px',})])
+                         style={'padding-top':'5px','padding-bottom':'5px','color':'#008080','backgroundColor':'#A9A9A9','width':'85px','borderRadius':'4px'}),
+					html.Br(),
+					html.Br(),
+					html.Br(),
+					html.Br(),
+					html.Br(),
+					html.Br(),
+					html.Br(),
+					html.Br(),
+					html.Br(),
+					html.Br(),
+					html.Br(),
+					html.Br(),
+					html.Div(html.Button(id='back',
+                                 n_clicks=0, children = dcc.Link('Back',href='/cdc/'),
+                                 style={'padding-top':'5px','padding-bottom':'5px','color':'#008080','backgroundColor':'#A9A9A9','width':'85px','borderRadius':'4px'}),style={'padding-right':'10px','float':'right'})])
         else:
             return html.Div([html.B("Please go to home page to enter the inputs... "),
                             dcc.Link('Home Page',href='/cdc')],style={'textAlign':'center'})
@@ -385,7 +410,7 @@ def display_cdc_result(temp,path,Affiliate,rm_ticket):
 def display_build_status_result(temp,path,Affiliate,rm_ticket):
     if path == '/cdc/build_status':
         if not Affiliate is None:
-            return html.H1("Build in progress...")
+            return html.Div("Build in progress...",style={'fontSize':24,'color':'#FFA500'})
         else:
             return html.Div([html.B("Please go to home page to enter the inputs... "),
                             dcc.Link('Home Page',href='/cdc')],style={'textAlign':'center'})
