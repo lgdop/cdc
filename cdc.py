@@ -60,7 +60,7 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
   for each_repo in ['cbbatch-'+country, 'cbform-'+country, 'globals-'+country]:
     sending_file_list=[]
     removing_file_list=[]
-    os.chdir(os.environ['PWD']+'/'+each_repo)
+    os.chdir('/clarify_cdc/'+each_repo)
     print os.getcwd()
     print "Entered repo " + each_repo
     sending_cmd = "git log --all --no-merges -i --grep="+rm_to_be_sent+" --date-order | grep '^commit '| awk '{print $2}'"
@@ -328,7 +328,7 @@ def main_func(affiliate, rm_string):
     global coll_handler
     country=affiliate
     coll_handler=db[country+'-ci']
-    os.chdir(os.environ['PWD'])
+    os.chdir('/clarify_cdc/')
     rm_time_dict={}
     input_rm_list=rm_string.strip().split()
     for each_rm in input_rm_list:
