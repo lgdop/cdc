@@ -482,8 +482,8 @@ def display_cdc_result(temp,path,Affiliate,rm_ticket):
     if path == '/cdc/build':
         if not Affiliate is None:
             #calling cdc main function
-            #output=main_func(affiliate=Affiliate.lower(), rm_string=rm_ticket)
-            output="Consolidation and De-Consolidation is Completed Successfully..! :-) "
+            output=main_func(affiliate=Affiliate.lower(), rm_string=rm_ticket)
+            #output="Consolidation and De-Consolidation is Completed Successfully..! :-) "
             return html.Div([
                     html.Table(
         # Header
