@@ -52,11 +52,15 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
   print "Entered CDC function"
   remove_us_dict={}
   send_us_dict={}
+  os.system('rm -rf *-'+country)
+  os.system('git clone https://'+gitlab_user+':'+gitlab_pwd+'@devops.upc.biz/gitlab/LibertyGlobal/cbbatch-'+country+'.git')
+  os.system('git clone https://'+gitlab_user+':'+gitlab_pwd+'@devops.upc.biz/gitlab/LibertyGlobal/cbform-'+country+'.git')
+  os.system('git clone https://'+gitlab_user+':'+gitlab_pwd+'@devops.upc.biz/gitlab/LibertyGlobal/globals-'+country+'.git')
   # this for loop is to generate file lists of sending and removing rms
   for each_repo in ['cbbatch-'+country, 'cbform-'+country, 'globals-'+country]:
     sending_file_list=[]
     removing_file_list=[]
-    os.chdir('/clarify_cdc/'+each_repo)
+    os.chdir(os.environ['PWD']+'/'+each_repo)
     print os.getcwd()
     print "Entered repo " + each_repo
     sending_cmd = "git log --all --no-merges -i --grep="+rm_to_be_sent+" --date-order | grep '^commit '| awk '{print $2}'"
@@ -98,12 +102,12 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
           for datewise_git_branch in modified_datewise_us_list:
             if datewise_git_branch.find(each_us_dict['_id']) > -1:
               remove_us_dict[modified_datewise_us_list.index(datewise_git_branch)]=each_us_dict['_id']
-        removable_us=remove_us_dict[min(remove_us_dict.keys())]
+        removable_us=remove_us_dict[min(remove_us_dict.keys())]            
         removing_rm_story_cmd="git for-each-ref --sort=-committerdate refs/remotes/origin | grep "+removable_us+" | head -1 | awk -F'origin/' '{print $NF}'"
         print removing_rm_story_cmd
         removing_rm_branch=subprocess.Popen(removing_rm_story_cmd,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].strip()
         print "removing rm branch - "+ removing_rm_branch
-
+        
         #######
         send_us_list=coll_handler.find({'RM_ID.'+rm_to_be_sent : {'$exists' : True}}, {'_id' : 1})
         get_us_by_modified_datewise="git branch -a --sort=-committerdate | awk -F'origin/' '{print $NF}' | uniq"
@@ -113,7 +117,7 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
           for datewise_git_branch in modified_datewise_us_list:
             if datewise_git_branch.find(each_us_dict['_id']) > -1:
               send_us_dict[modified_datewise_us_list.index(datewise_git_branch)]=each_us_dict['_id']
-        sending_us=send_us_dict[min(send_us_dict.keys())]
+        sending_us=send_us_dict[min(send_us_dict.keys())]            
         sending_rm_story_cmd="git for-each-ref --sort=-committerdate refs/remotes/origin | grep "+sending_us+" | head -1 | awk -F'origin/' '{print $NF}'"
         print sending_rm_story_cmd
         sending_rm_branch=subprocess.Popen(sending_rm_story_cmd,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].strip()
@@ -121,26 +125,150 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
         sending_tagged_commit_cmd="git for-each-ref --sort=-committerdate refs/remotes/origin | grep "+sending_rm_branch+" | awk -F' ' '{print $1}'"
         sending_tagged_commit_sha=subprocess.Popen(sending_tagged_commit_cmd,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0]
         #######
-
+        
         # DE-CONSOLIDATION begins
         os.system('git checkout '+sending_rm_branch.strip())
+        os.system('git config merge.conflictstyle diff3')
         existing_tag_of_sending_rm=subprocess.Popen("git tag --sort=-taggerdate --points-at "+sending_tagged_commit_sha.strip()+" | head -1", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0]
         file_specific_remove_commit_cmd="git log --no-merges --format='%h %s' "+each_sending_file+" | grep "+rm_to_be_removed+" | awk -F' ' '{print $1}'"
-        file_specific_send_commit_cmd="git log --no-merges --format='%H %s' "+each_sending_file+" | grep "+rm_to_be_sent+" | awk -F' ' '{print $1}'"
+        file_specific_remove_sha_msg_cmd="git log --no-merges --format='%s' "+each_sending_file+" | grep "+rm_to_be_removed
+        file_specific_send_commit_cmd="git log --no-merges --format='%h %s' "+each_sending_file+" | grep "+rm_to_be_sent+" | awk -F' ' '{print $1}'"
         file_specific_remove_commit_list=subprocess.Popen(file_specific_remove_commit_cmd,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].splitlines()
+        file_specific_remove_sha_msg_list=subprocess.Popen(file_specific_remove_sha_msg_cmd,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].splitlines()
+        commit_sha_msg_dict=dict(zip(file_specific_remove_commit_list,file_specific_remove_sha_msg_list))
         file_specific_send_commit_list=subprocess.Popen(file_specific_send_commit_cmd,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].splitlines()
         #execute revert commands to deconsolidate
         for each_commit in file_specific_remove_commit_list:
-          os.system('git revert --no-commit -Xtheirs '+each_commit)
-          print "revert done"
+          revert_cmd='git revert --no-commit '+each_commit
+          git_revert_cmd_output=subprocess.Popen(revert_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()[1]
+          print git_revert_cmd_output
+          each_commit_msg=commit_sha_msg_dict[each_commit].strip()
+          fp=open(each_sending_file, 'r')
+          big_string=fp.read()
+          fp.close()
+          print each_commit +':'+ each_commit_msg+'$'
+          str_file_list=re.split(r'(<{7} HEAD(\n.*?)+\|{7} '+each_commit+r'\.\.\. '+each_commit_msg+r'(\n.*?)+\={7}(\n.*?)+>{7} parent of '+each_commit+r'\.\.\. '+each_commit_msg+r')', big_string)
+          #print str_file_list
+          print "number of patterns observed - "+str(len(str_file_list))
+          if git_revert_cmd_output.find('conflicts') > -1:
+            print "Started working on the conflicts resolution"
+            for each_match in re.finditer(r'(<{7} HEAD(\n.*?)+\|{7} '+each_commit+r'\.\.\. '+each_commit_msg+r'(\n.*?)+\={7}(\n.*?)+>{7} parent of '+each_commit+r'\.\.\. '+each_commit_msg+r')', big_string):
+              if each_match.group() in str_file_list:
+                print "working with patterns is started in iterative manner"
+                match_index=str_file_list.index(each_match.group())
+                ours_obj=re.search(r'\<{7} HEAD(.*?\n)+\|{7}',str_file_list[match_index])
+                if ours_obj:
+                  print "Found Code Section in Ours"
+                  iterator_index=ours_line_index=-1
+                  ours_iterator_index=rev_iterator_index=rev_line_index=ours_rev_line_index=-1
+                  ours_section=ours_obj.group()
+                  ours_code=ours_section.lstrip('<<<<<<< HEAD').rstrip('|||||||')
+                  ours_code_lines=ours_code.splitlines()
+                  ours_code_lines=[value for value in ours_code_lines if value.strip() != '' ]
+                  revert_obj=re.search(r'(\|{7} '+each_commit+r'\.\.\. (.*?\n)+\={7})',str_file_list[match_index])
+                  if revert_obj:
+                    print "Found the code to be reverted"
+                    to_be_reverted_section=revert_obj.group()
+                    to_be_reverted_code=to_be_reverted_section.lstrip(r'||||||| '+each_commit+r'... '+each_commit_msg+r')').rstrip('=======')
+                    theirs_obj=re.search(r'(\={7}(\n.*?)+\>{7})',str_file_list[match_index])
+                    to_be_reverted_code_lines=to_be_reverted_code.splitlines()
+                    to_be_reverted_code_lines=[value for value in to_be_reverted_code_lines if value.strip() != '' ]
+                    for each_ours_line in ours_code_lines:
+                      if each_ours_line.find(to_be_reverted_code_lines[0]) > -1:
+                        ours_line_index=ours_code_lines.index(each_ours_line)
+                        iterator_index=ours_line_index
+                        print "match_found at - " + str(ours_line_index)
+                        break
+                    seq_counter=0
+                    if iterator_index > -1:
+                      print str(iterator_index) + " - after condition"
+                      for each_rev_line in to_be_reverted_code_lines:
+                        if iterator_index < len(ours_code_lines):
+                          if ours_code_lines[iterator_index].find(each_rev_line.strip()) > -1:
+                            iterator_index=iterator_index+1
+                            seq_counter=seq_counter+1
+                          else:
+                            print "rev lines are not in sequence"
+                            break
+                      print str(seq_counter)+" - before condition"
+                      print len(to_be_reverted_code_lines)
+                      print to_be_reverted_code_lines
+                    if seq_counter == len(to_be_reverted_code_lines):
+                      print str(seq_counter)+" - after condition"
+                      ours_code_lines_first_part=ours_code_lines[0:ours_line_index]
+                      if len(ours_code_lines) > ours_line_index:
+                        ours_code_lines_second_part=ours_code_lines[ours_line_index+seq_counter:]
+                        ours_code_lines_first_part.extend(ours_code_lines_second_part)
+                        temp_ours_code='\n'.join(ours_code_lines_first_part)
+                      if theirs_obj:
+                        print "entered into theirs"
+                        theirs_section=theirs_obj.group()
+                        theirs_code=theirs_section.lstrip('=======').rstrip('>>>>>>>')
+                        theirs_code_lines=theirs_code.splitlines()
+                        theirs_code_lines=[value for value in theirs_code_lines if value.strip() != '' ]
+                        print "length of theirs " + str(len(theirs_code_lines))
+                        if len(theirs_code_lines) > 0:
+                          for each_theirs_line in theirs_code_lines:
+                            for each_rev_line in to_be_reverted_code_lines:
+                              if each_rev_line.find(each_theirs_line.strip()) > -1:
+                                rev_line_index=to_be_reverted_code_lines.index(each_rev_line)
+                                rev_iterator_index=rev_line_index
+                                print " theirs match_found at - " + str(rev_line_index)
+                                break
+                            for each_ours_line in ours_code_lines:
+                              if each_ours_line.find(each_theirs_line.strip()) > -1:
+                                ours_rev_line_index=ours_code_lines.index(each_ours_line)
+                                ours_iterator_index=ours_rev_line_index
+                                print "theirs match_found at - " + str(ours_rev_line_index)
+                                break
+                            if rev_iterator_index > -1 and ours_iterator_index > -1:
+                              #break
+                              print each_theirs_line
+                              if temp_ours_code.find(each_theirs_line.strip())== -1:
+                                ours_code_lines_first_part.append(each_theirs_line)
+                            elif rev_iterator_index == -1 and ours_iterator_index == -1:
+                              print each_theirs_line
+                              ours_code_lines_first_part.append(each_theirs_line)
+                        #rev_seq_counter=0
+                        #theirs_temp_list=[]
+                        #if rev_iterator_index > -1 and ours_rev_line_index > -1:
+                        #  print "theirs count is "+ str(rev_iterator_index) + " - after condition"
+                          #for each_theirs_line in theirs_code_lines:
+                          #  if rev_iterator_index < len(to_be_reverted_code_lines) and ours_rev_line_index < len(ours_code_lines):
+                          #    if to_be_reverted_code_lines[rev_iterator_index].find(each_theirs_line) > -1 and ours_code_lines[ours_iterator_index].find(each_theirs_line) > -1:
+                          #      rev_iterator_index=rev_iterator_index+1
+                          #      ours_iterator_index=ours_iterator_index+1
+                          #      rev_seq_counter=rev_seq_counter+1
+                          #      if not temp_ours_code.find(each_theirs_line) > -1:
+                          #        theirs_temp_list.append(each_theirs_line)
+                          #    else:
+                          #      print "theirs lines are not in sequence"
+                          #print str(rev_seq_counter)+" - before theirs condition"
+                          #print len(theirs_code_lines)
+                          #print theirs_code_lines
+                        #if rev_seq_counter > 0:
+                        #  print "rev count is " +str(rev_seq_counter)+" - after condition"
+                        #  ours_code_lines_first_part.extend(theirs_code_lines)
+                      ours_code='\n'.join(ours_code_lines_first_part)
+                      str_file_list[match_index]=ours_code.strip()
+                    else:
+                      print "Nothing to be reverted"
+                      str_file_list[match_index]=ours_code.strip()
+                    print "Code Reversion is finished"
+          file_str='\n'.join(str_file_list)
+          fp=open(each_sending_file,'w')
+          fp.writelines(file_str)
+          fp.close()
+          print"Code is ready to for git add"
+          os.system('git add '+each_sending_file)
           flag=True
     if flag:
       os.system('git config --global user.email "libertyglobal-bss-clarify-internal@accenture.com"')
       os.system('git config --global user.name "LibertyGlobal-BSS-Clarify Workspace Internal User"')
       sha_msg='"De-consolidating '+rm_to_be_removed[3:]+' for '+rm_to_be_sent+'"'
       os.system('git commit -m '+sha_msg)
-      cmd="git log --grep="+sha_msg+" --date-order | grep '^commit '| awk '{print $2}' | head -1"
-      sha_msg_commit=subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].strip()
+      #cmd="git log --grep="+sha_msg+" --date-order | grep '^commit '| awk '{print $2}' | head -1"
+      #sha_msg_commit=subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].strip()
       os.system('git push origin '+sending_rm_branch)
       # Creating New Tag for De-Consolidated Code based on the old tag
       if existing_tag_of_sending_rm.find('.') > 0:
@@ -150,6 +278,7 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
       #Cherry-Picking De-Consolidation Activity onto Master
       sending_rm_HEAD_cmd='git rev-parse HEAD'
       sending_rm_HEAD=subprocess.Popen(sending_rm_HEAD_cmd,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].strip()
+      os.system('git stash')
       os.system('git checkout master')
       os.system('git cherry-pick --no-commit -Xtheirs '+sending_rm_HEAD)
       os.system('git commit --allow-empty -m "Cherry-Picked latest commit of '+sending_rm_branch+'"')
@@ -162,8 +291,8 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
       os.system('git checkout '+adding_rm_branch)
       for each_commit in file_specific_send_commit_list:
         if each_commit.strip() != sending_rm_HEAD.strip():
-          os.system('git cherry-pick --no-commit -Xtheirs '+each_commit)
-
+          os.system('git cherry-pick --no-commit -Xours '+each_commit)
+        
       con_sha_msg='"Consolidating '+rm_to_be_sent[3:]+' for '+rm_to_be_added+'"'
       os.system('git commit -m '+con_sha_msg)
       os.system('git push origin '+adding_rm_branch)
@@ -185,25 +314,21 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
       os.system('git commit --allow-empty -m "Cherry-Picked latest commit of '+removing_rm_branch.strip()+'"')
       os.system('git push origin master')
       #Creating New Tag for Consolidated Code based on Old Tag
-
-      msg="Deconsolidation and Consolidation is completed"
+      os.system('cd ../')
+      msg="Deconsolidation and Consolidation is completed Successfully...! :-) "
       print msg
       # CONSOLIDATION ended
     else:
       msg="There are no common components between "+ rm_to_be_sent +" and " + rm_to_be_removed
+      os.system('cd ../')
   return msg
 
 def main_func(affiliate, rm_string):
     global country
     global coll_handler
-    country=affiliate.lower()
+    country=affiliate
     coll_handler=db[country+'-ci']
-    os.chdir('/clarify_cdc/')
-    os.environ['no_proxy']='devops.upc.biz'
-    os.system('rm -rf *-'+country)
-    os.system('git clone https://'+gitlab_user+':'+gitlab_pwd+'@devops.upc.biz/gitlab/LibertyGlobal/cbbatch-'+country+'.git')
-    os.system('git clone https://'+gitlab_user+':'+gitlab_pwd+'@devops.upc.biz/gitlab/LibertyGlobal/cbform-'+country+'.git')
-    os.system('git clone https://'+gitlab_user+':'+gitlab_pwd+'@devops.upc.biz/gitlab/LibertyGlobal/globals-'+country+'.git')
+    os.chdir(os.environ['PWD'])
     rm_time_dict={}
     input_rm_list=rm_string.strip().split()
     for each_rm in input_rm_list:
@@ -211,7 +336,8 @@ def main_func(affiliate, rm_string):
         rm_dict=coll_handler.find_one({'RM_ID.'+each_rm : { '$exists' : True }},  {'RM_ID.'+each_rm : 1})
       except Exception as e :
         print e
-        return "Please perform CI for this ticket - "+each_rm+", then only CDC tool will work as expected"
+        print "Please perform CI for this ticket - "+each_rm+", then only CDC tool will work as expected"
+        sys.exit(1)
       if not rm_dict is None:
         rm_time_dict[datetime.datetime.strptime(rm_dict['RM_ID'][each_rm]['build_time'], '%Y_%m_%d_%H_%M_%S').ctime()]=each_rm
     print rm_time_dict
@@ -222,6 +348,7 @@ def main_func(affiliate, rm_string):
     print "Developed Order : "+str(sorted_rm_list)
     print "To be Deployed Order : "+str(input_rm_list)
     cdc_rm_list=[]
+    cdc_output_dict={}
     for each_rm in input_rm_list:
       print each_rm
       i=sorted_rm_list.index(each_rm)
@@ -229,10 +356,10 @@ def main_func(affiliate, rm_string):
         temp_dc_list=sorted_rm_list[:i]
         print str(temp_dc_list)+" to be deconsolidated from "+each_rm
         for each_dc_rm in temp_dc_list:
-          msg=cdc(each_rm, each_dc_rm)
+          cdc_output_dict[each_dc_rm+'~'+each_rm]=cdc(each_rm, each_dc_rm)
         sorted_rm_list.remove(each_rm)
         cdc_rm_list.append(each_rm)
-    return "Consolidation and De-Consolidation is Completed Successfully..! :-) "
+    return "\n "+ str(cdc_output_dict)
 
 def perform_build(cdc_rm_list):
         print "RUN ci pipeline for "
