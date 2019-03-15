@@ -12,7 +12,7 @@ import os
 from pymongo import MongoClient
 import subprocess
 import datetime
-import sys
+#import sys
 #import pymongo
 vault_token=subprocess.Popen('cat /run/secrets/clarify-vault-token', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
 os.environ['VAULT_TOKEN']=vault_token.strip()
@@ -143,10 +143,10 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
         os.system('git config merge.conflictstyle diff3')
         print "I'm about to start deconsolidation"
         existing_tag_of_sending_rm=subprocess.Popen("git tag --sort=-taggerdate --points-at "+sending_tagged_commit_sha.strip()+" | head -1", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0]
-
+        
         file_specific_send_commit_cmd="git log --no-merges --format='%h %s' "+each_sending_file+" | grep "+rm_to_be_sent+" | awk -F' ' '{print $1}'"
         print file_specific_send_commit_cmd
-
+        
         file_specific_send_commit_list=subprocess.Popen(file_specific_send_commit_cmd,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].splitlines()
         #execute revert commands to deconsolidate
         for each_commit in file_specific_remove_commit_list:
@@ -169,18 +169,18 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
             each_commit_msg=commit_sha_msg_dict[each_commit].strip()
             fp=open(each_sending_file, 'r')
             big_string=fp.read()
-            commenting_section=big_string.split('Option Explicit',1)[0]
-            coding_section=big_string.split('Option Explicit', 1)[1]
+            #commenting_section=big_string.split('Option Explicit',1)[0]
+            #coding_section=big_string.split('Option Explicit', 1)[1]
             fp.close()
             if each_commit_msg.find('(') > -1:
               old_commit_msg=each_commit_msg
               each_commit_msg=each_commit_msg.replace('(','')
               each_commit_msg=each_commit_msg.replace(')','')
-              commenting_section=commenting_section.replace(old_commit_msg, each_commit_msg)
-              coding_section=coding_section.replace(old_commit_msg, each_commit_msg)
+              #commenting_section=commenting_section.replace(old_commit_msg, each_commit_msg)
+              big_string=big_string.replace(old_commit_msg, each_commit_msg)
 
             print each_sending_file + " - " + each_commit +' : '+ each_commit_msg+'$'
-            str_file_list=re.split(r'(<{7} HEAD(\n.*?)+\|{7} '+each_commit+r'\.\.\. '+each_commit_msg+r'(\n.*?)+\={7}(\n.*?)+>{7} parent of '+each_commit+r'\.\.\. '+each_commit_msg+r')', coding_section)
+            str_file_list=re.split(r'(<{7} HEAD(\n.*?)+\|{7} '+each_commit+r'\.\.\. '+each_commit_msg+r'(\n.*?)+\={7}(\n.*?)+>{7} parent of '+each_commit+r'\.\.\. '+each_commit_msg+r')', big_string)
             regex=r'(<{7} HEAD(\n.*?)+\|{7} '+each_commit+r'\.\.\. '+each_commit_msg+r'(\n.*?)+\={7}(\n.*?)+>{7} parent of '+each_commit+r'\.\.\. '+each_commit_msg+r')'
             ours_regex=r'\<{7} HEAD(\n.*?)+\|{7}'
             print "lenght of the str_file_list - "+str(len(str_file_list))
@@ -188,7 +188,7 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
             print "number of patterns observed - "+str(len(str_file_list))
             if git_revert_cmd_output.find('conflicts') > -1:
               print "Started working on the conflicts resolution"
-              for each_match in re.finditer(regex, coding_section):
+              for each_match in re.finditer(regex, big_string):
                 if each_match.group() in str_file_list:
                   print "working with patterns is started in iterative manner"
                   match_index=str_file_list.index(each_match.group())
@@ -284,135 +284,19 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
                       else:
                         print "Nothing to be reverted"
                         str_file_list[match_index]=ours_code.strip()
-##########  ######################################################################
-
-            str_comment_list=re.split(r'(<{7} HEAD(\n.*?)+\|{7} '+each_commit+r'\.\.\. '+each_commit_msg+r'(\n.*?)+\={7}(\n.*?)+>{7} parent of '+each_commit+r'\.\.\. '+each_commit_msg+r')', commenting_section)
-            regex=r'(<{7} HEAD(\n.*?)+\|{7} '+each_commit+r'\.\.\. '+each_commit_msg+r'(\n.*?)+\={7}(\n.*?)+>{7} parent of '+each_commit+r'\.\.\. '+each_commit_msg+r')'
-            ours_regex=r'\<{7} HEAD(\n.*?)+\|{7}'
-            print "lenght of the str_comment_list - "+str(len(str_comment_list))
-
-            if not len(str_comment_list) > 1:
-              print "checking with second type of regex"
-              str_comment_list=re.split(r'(<{7} HEAD(.*?\n)+\|{7} '+each_commit+r'\.\.\. '+each_commit_msg+r'(\n.*?)+\={7}(\n.*?)+>{7} parent of '+each_commit+r'\.\.\. '+each_commit_msg+r')', commenting_section)
-              regex=r'(<{7} HEAD(.*?\n)+\|{7} '+each_commit+r'\.\.\. '+each_commit_msg+r'(\n.*?)+\={7}(\n.*?)+>{7} parent of '+each_commit+r'\.\.\. '+each_commit_msg+r')'
-              ours_regex=r'\<{7} HEAD(.*?\n)+\|{7}'
-            print "length of comment list before auto resolution is : "+str(len(str_comment_list))
-            print "number of patterns observed in comment part of the code - "+str(len(str_comment_list))
-            if git_revert_cmd_output.find('conflicts') > -1:
-              print "Started working on the conflicts resolution"
-              for each_match in re.finditer(regex, commenting_section):
-                if each_match.group() in str_comment_list:
-                  print "working with patterns is started in iterative manner"
-                  match_index=str_comment_list.index(each_match.group())
-                  ours_obj=re.search(ours_regex,str_comment_list[match_index])
-                  if ours_obj:
-                    print "Found Code Section in Ours"
-                    iterator_index=-1
-                    ours_iterator_index=rev_iterator_index=rev_line_index=ours_rev_line_index=-1
-                    ours_section=ours_obj.group()
-                    ours_code=ours_section.lstrip('<<<<<<< HEAD').rstrip('|||||||')
-                    ours_code_lines=ours_code.splitlines()
-                    ours_code_lines=[value for value in ours_code_lines if value.strip() != '' ]
-                    initial_ours_code_lines=ours_code_lines
-                    revert_obj=re.search(r'(\|{7} '+each_commit+r'\.\.\. (.*?\n)+\={7})',str_comment_list[match_index])
-                    if revert_obj:
-                      print "Found the code to be reverted"
-                      to_be_reverted_section=revert_obj.group()
-                      to_be_reverted_code=to_be_reverted_section.lstrip(r'||||||| '+each_commit+r'... '+each_commit_msg+r')').rstrip('=======')
-                      theirs_obj=re.search(r'(\={7}(\n.*?)+\>{7})',str_comment_list[match_index])
-                      to_be_reverted_code_lines=to_be_reverted_code.splitlines()
-                      to_be_reverted_code_lines=[value for value in to_be_reverted_code_lines if value.strip() != '' ]
-                      if theirs_obj:
-                        #print "entered into theirs"
-                        theirs_section=theirs_obj.group()
-                        theirs_code=theirs_section.lstrip('=======').rstrip('>>>>>>>')
-                        theirs_code_lines=theirs_code.splitlines()
-                        theirs_code_lines=[value for value in theirs_code_lines if value.strip() != '' ]
-                      print "length of to_be_reverted_lines - "+ str(len(to_be_reverted_code_lines))
-                      line_index_dict={}
-                      if len(to_be_reverted_code_lines) > 0:
-                        for each_rev_line in to_be_reverted_code_lines:
-                          for each_our_line in ours_code_lines:
-                            if ''.join(each_rev_line.split()).strip() == ''.join(each_our_line.split()).strip():
-                              iterator_index=ours_code_lines.index(each_our_line)
-                              line_index_dict[iterator_index]=each_our_line
-                              if theirs_obj:
-                                print "length of theirs " + str(len(theirs_code_lines))
-                                if len(theirs_code_lines) > 0:
-                                  #print line_index_dict
-                                  #print type(line_index_dict.keys()[0])
-                                  for each_theirs_line in theirs_code_lines:
-                                    if ''.join(each_rev_line.split()).strip() == ''.join(each_theirs_line.split()).strip():
-                                      #print line_index_dict
-                                      line_index_dict.pop(iterator_index)
-                                      break
-                                  #print line_index_dict
-                                  break
-                          else:
-                            print each_rev_line + " is not found in ours_code_lines"
-
-                      if len(line_index_dict.keys()) > 0:
-                        print "length of the index_dict - " +str(len(line_index_dict))
-                        print "length of ours_code_lines - "+str(len(ours_code_lines))
-                        rev_counter=0
-                        for each_key in line_index_dict.keys():
-                          #print each_key
-                          print ours_code_lines[each_key-rev_counter]
-                          ours_code_lines.pop(each_key-rev_counter)
-                          rev_counter=rev_counter+1
-                        #temp_ours_code='\n'.join(ours_code_lines)
-                        if theirs_obj:
-                          print "entered into theirs"
-                          #theirs_section=theirs_obj.group()
-                          #theirs_code=theirs_section.lstrip('=======').rstrip('>>>>>>>')
-                          #theirs_code_lines=theirs_code.splitlines()
-                          #theirs_code_lines=[value for value in theirs_code_lines if value.strip() != '' ]
-                          print "length of theirs " + str(len(theirs_code_lines))
-                          if len(theirs_code_lines) > 0:
-                            for each_theirs_line in theirs_code_lines:
-                              for each_rev_line in to_be_reverted_code_lines:
-                                if ''.join(each_rev_line.split()).strip().find(''.join(each_theirs_line.split()).strip()) > -1:
-                                  rev_line_index=to_be_reverted_code_lines.index(each_rev_line)
-                                  rev_iterator_index=rev_line_index
-                                  #print " theirs match_found in revert section at - " + str(rev_line_index)
-                                  break
-                              for each_ours_line in initial_ours_code_lines:
-                                if ''.join(each_ours_line.split()).strip().find(''.join(each_theirs_line.split()).strip()) > -1:
-                                  ours_rev_line_index=initial_ours_code_lines.index(each_ours_line)
-                                  ours_iterator_index=ours_rev_line_index
-                                  #print "theirs match_found in ours section at - " + str(ours_rev_line_index)
-                                  break
-                              if rev_iterator_index > -1 or ours_iterator_index > -1:
-                                rev_iterator_index=ours_iterator_index=-1
-                              #  #break
-                              #  #print each_theirs_line
-                              #  if temp_ours_code.find(each_theirs_line.strip())== -1:
-                              #    ours_code_lines.append(each_theirs_line)
-                              elif rev_iterator_index == -1 and ours_iterator_index == -1:
-                                #print each_theirs_line
-                                ours_code_lines.append(each_theirs_line)
-                        ours_code='\n'.join(ours_code_lines)
-                        str_comment_list[match_index]=ours_code.strip()
-                      else:
-                        print "Nothing to be reverted"
-                        str_comment_list[match_index]=ours_code.strip()
               print "Code Reversion is finished  for the commit id - "+each_commit
-            #print str_comment_list
-            if 0 < len(str_comment_list) < 2 :
-              comment_str=str_comment_list[0]
-            else:
-              comment_str='\n'.join(str_comment_list)
             if 0 < len(str_file_list) < 2:
               code_str=str_file_list[0]
               #print code_str
             else:
               code_str='\n'.join(str_file_list)
-            file_str=comment_str+'\n Option Explicit \n'+code_str
+            file_str=code_str
             file_str_list=file_str.splitlines()
             code_file=''
             for each_line in file_str_list:
               if each_line.find('<<<<<<<') == -1 and each_line.find('|||||||') == -1 and each_line.strip() != '':
-                code_file=code_file+each_line+'\n'
+                if not (each_line.find(removing_rm_branch.strip()) != -1 and each_line.startswith("'")):
+                  code_file=code_file+each_line+'\n'
             fp=open(each_sending_file,'w')
             fp.writelines(code_file)
             fp.close()
@@ -461,7 +345,7 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
       file_specific_send_commit_list.reverse()
       for each_commit in file_specific_send_commit_list:
         if not each_commit.strip() in commits_referring_to_code_reversion:
-          os.system('git cherry-pick --no-commit -Xtheirs '+each_commit)
+          os.system('git cherry-pick --no-commit -Xours '+each_commit)
           commit_specific_files_cmd='git diff-tree --no-commit-id --name-only -r '+each_commit
           commit_specific_files=subprocess.Popen(commit_specific_files_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
           commit_specific_file_list=commit_specific_files.splitlines()
