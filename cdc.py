@@ -200,7 +200,7 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
                     ours_section=ours_obj.group()
                     ours_code=ours_section.lstrip('<<<<<<< HEAD').rstrip('|||||||')
                     ours_code_lines=ours_code.splitlines()
-                    ours_code_lines=[value for value in ours_code_lines if value.strip() != '' ]
+                    #ours_code_lines=[value for value in ours_code_lines if value.strip() != '' ]
                     initial_ours_code_lines=ours_code_lines
                     revert_obj=re.search(r'(\|{7} '+each_commit+r'\.\.\. (.*?\n)+\={7})',str_file_list[match_index])
                     if revert_obj:
@@ -209,13 +209,13 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
                       to_be_reverted_code=to_be_reverted_section.lstrip(r'||||||| '+each_commit+r'... '+each_commit_msg+r')').rstrip('=======')
                       theirs_obj=re.search(r'(\={7}(\n.*?)+\>{7})',str_file_list[match_index])
                       to_be_reverted_code_lines=to_be_reverted_code.splitlines()
-                      to_be_reverted_code_lines=[value for value in to_be_reverted_code_lines if value.strip() != '' ]
+                      #to_be_reverted_code_lines=[value for value in to_be_reverted_code_lines if value.strip() != '' ]
                       if theirs_obj:
                         #print "entered into theirs"
                         theirs_section=theirs_obj.group()
                         theirs_code=theirs_section.lstrip('=======').rstrip('>>>>>>>')
                         theirs_code_lines=theirs_code.splitlines()
-                        theirs_code_lines=[value for value in theirs_code_lines if value.strip() != '' ]
+                        #theirs_code_lines=[value for value in theirs_code_lines if value.strip() != '' ]
                       print "length of to_be_reverted_lines - "+ str(len(to_be_reverted_code_lines))
                       line_index_dict={}
                       if len(to_be_reverted_code_lines) > 0:
@@ -294,7 +294,7 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
             file_str_list=file_str.splitlines()
             code_file=''
             for each_line in file_str_list:
-              if each_line.find('<<<<<<<') == -1 and each_line.find('|||||||') == -1 and each_line.strip() != '':
+              if each_line.find('<<<<<<<') == -1 and each_line.find('|||||||') == -1 :
                 if not (each_line.find(removing_rm_branch.strip()) != -1 and each_line.startswith("'")):
                   code_file=code_file+each_line+'\n'
             fp=open(each_sending_file,'w')
@@ -356,7 +356,7 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
       con_sha_msg='"Consolidating '+rm_to_be_sent[3:]+' for '+rm_to_be_added+'"'
       consolidation_rc=os.system('git commit -m '+con_sha_msg)
       if consolidation_rc > 0:
-        consolidation_flag=False
+        #consolidation_flag=False
         msg=rm_to_be_sent + 'is not conslidated onto '+rm_to_be_removed+' as there was ERROR occured while consoidating a common file in '+each_repo
         cdc_output_list.append(msg)
         break
