@@ -135,7 +135,6 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
         file_specific_remove_sha_msg_cmd="git log --no-merges --format='%s' "+each_sending_file+" | grep "+rm_to_be_removed
         print file_specific_remove_sha_msg_cmd
         file_specific_remove_commit_list=subprocess.Popen(file_specific_remove_commit_cmd,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].splitlines()
-        print file_specific_remove_commit_list
         file_specific_remove_sha_msg_list=subprocess.Popen(file_specific_remove_sha_msg_cmd,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].splitlines()
         commit_sha_msg_dict=dict(zip(file_specific_remove_commit_list,file_specific_remove_sha_msg_list))
         os.system('git checkout '+sending_rm_branch.strip())
@@ -143,11 +142,23 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
         os.system('git config merge.conflictstyle diff3')
         print "I'm about to start deconsolidation"
         existing_tag_of_sending_rm=subprocess.Popen("git tag --sort=-taggerdate --points-at "+sending_tagged_commit_sha.strip()+" | head -1", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0]
-        
+
         file_specific_send_commit_cmd="git log --no-merges --format='%h %s' "+each_sending_file+" | grep "+rm_to_be_sent+" | awk -F' ' '{print $1}'"
         print file_specific_send_commit_cmd
-        
+
         file_specific_send_commit_list=subprocess.Popen(file_specific_send_commit_cmd,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].splitlines()
+        #avoid common commits between sending rm and removal rm
+        removal_rm_committed_code_dict={}
+        sending_rm_committed_code_dict={}
+        for each_commit in file_specific_remove_commit_list:
+          removal_rm_committed_code_dict[each_commit]=subprocess.Popen('git show '+each_commit+' '+each_sending_file+" | grep '^+\|^-'", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].strip()
+        for each_commit in file_specific_send_commit_list:
+          sending_rm_committed_code_dict[each_commit]=subprocess.Popen('git show '+each_commit+' '+each_sending_file+" | grep '^+\|^-'", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].strip()
+        for sent_key in sending_rm_committed_code_dict.keys():
+          for remo_key in removal_rm_committed_code_dict.keys():
+            if removal_rm_committed_code_dict[remo_key] == sending_rm_committed_code_dict[sent_key]:
+              file_specific_remove_commit_list.remove(remo_key)
+              print str(file_specific_remove_commit_list) + ' - to be reverted in ' + each_sending_file
         #execute revert commands to deconsolidate
         for each_commit in file_specific_remove_commit_list:
           git_show_output_cmd='git show '+each_commit+' '+each_sending_file+' | grep ^+ | grep -v '+each_sending_file
