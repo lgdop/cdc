@@ -1,5 +1,6 @@
 #!/usr/local/bin/python2.7
 import dash
+import json
 from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
 import dash_html_components as html
@@ -9,7 +10,7 @@ import hvac
 #from datetime import datetime as dt
 import re
 import os
-from pymongo import MongoClient
+import pymongo
 import subprocess
 import datetime
 #import sys
@@ -30,7 +31,7 @@ clarify_mongo_pwd=client.read('lg-bss-clarify/mongo-creds')['data']['mongo-pwd']
 gitlab_user=client.read('lg-bss-clarify/orchadop-creds')['data']['orchadop-user']
 gitlab_pwd=client.read('lg-bss-clarify/orchadop-creds')['data']['orchadop-pwd']
 
-connection=MongoClient('mongodb://'+clarify_mongo_user+':'+clarify_mongo_pwd+'@mongodb:27017/libertyglobal-bss-clarify?ssl=false')
+connection=pymongo.MongoClient('mongodb://'+clarify_mongo_user+':'+clarify_mongo_pwd+'@mongodb:27017/libertyglobal-bss-clarify?ssl=false')
 db=connection['libertyglobal-bss-clarify']
 
 server = Flask(__name__)
@@ -161,9 +162,11 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
               print str(file_specific_remove_commit_list) + ' - to be reverted in ' + each_sending_file
         #execute revert commands to deconsolidate
         for each_commit in file_specific_remove_commit_list:
+          print str(each_commit)
           git_show_output_cmd='git show '+each_commit+' '+each_sending_file+' | grep ^+ | grep -v '+each_sending_file
           git_show_output=subprocess.Popen(git_show_output_cmd, shell =True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
           if len(git_show_output.strip()) > 1: #to avoid empty new lines for reversion
+            print "not empty line"
             file_str=''
             revert_cmd='git revert --no-commit '+each_commit
             git_revert_cmd_output=subprocess.Popen(revert_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()[1]
@@ -195,7 +198,7 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
             regex=r'(<{7} HEAD(\n.*?)+\|{7} '+each_commit+r'\.\.\. '+each_commit_msg+r'(\n.*?)+\={7}(\n.*?)+>{7} parent of '+each_commit+r'\.\.\. '+each_commit_msg+r')'
             ours_regex=r'\<{7} HEAD(\n.*?)+\|{7}'
             print "lenght of the str_file_list - "+str(len(str_file_list))
-            #print str_file_list
+            print str_file_list
             print "number of patterns observed - "+str(len(str_file_list))
             if git_revert_cmd_output.find('conflicts') > -1:
               print "Started working on the conflicts resolution"
@@ -222,7 +225,7 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
                       to_be_reverted_code_lines=to_be_reverted_code.splitlines()
                       #to_be_reverted_code_lines=[value for value in to_be_reverted_code_lines if value.strip() != '' ]
                       if theirs_obj:
-                        #print "entered into theirs"
+                        print "entered into theirs"
                         theirs_section=theirs_obj.group()
                         theirs_code=theirs_section.lstrip('=======').rstrip('>>>>>>>')
                         theirs_code_lines=theirs_code.splitlines()
@@ -238,16 +241,16 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
                               if theirs_obj:
                                 print "length of theirs " + str(len(theirs_code_lines))
                                 if len(theirs_code_lines) > 0:
-                                  #print line_index_dict
-                                  #print type(line_index_dict.keys()[0])
+                                  print line_index_dict
+                                  print type(line_index_dict.keys()[0])
                                   for each_theirs_line in theirs_code_lines:
                                     if ''.join(each_rev_line.split()).strip() == ''.join(each_theirs_line.split()).strip():
-                                      #print line_index_dict
+                                      print line_index_dict
                                       line_index_dict.pop(iterator_index)
                                       break
-                                  #print line_index_dict
+                                  print line_index_dict
                                   break
-                          else:
+                          #else:
                             print each_rev_line + " is not found in ours_code_lines"
 
                       if len(line_index_dict.keys()) > 0:
@@ -255,50 +258,53 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
                         print "length of ours_code_lines - "+str(len(ours_code_lines))
                         rev_counter=0
                         for each_key in line_index_dict.keys():
-                          #print each_key
+                          print each_key
                           print ours_code_lines[each_key-rev_counter]
                           ours_code_lines.pop(each_key-rev_counter)
                           rev_counter=rev_counter+1
                         #temp_ours_code='\n'.join(ours_code_lines)
-                        if theirs_obj:
-                          print "entered into theirs"
-                          #theirs_section=theirs_obj.group()
-                          #theirs_code=theirs_section.lstrip('=======').rstrip('>>>>>>>')
-                          #theirs_code_lines=theirs_code.splitlines()
-                          #theirs_code_lines=[value for value in theirs_code_lines if value.strip() != '' ]
-                          print "length of theirs " + str(len(theirs_code_lines))
-                          if len(theirs_code_lines) > 0:
-                            for each_theirs_line in theirs_code_lines:
-                              for each_rev_line in to_be_reverted_code_lines:
-                                if ''.join(each_rev_line.split()).strip().find(''.join(each_theirs_line.split()).strip()) > -1:
-                                  rev_line_index=to_be_reverted_code_lines.index(each_rev_line)
-                                  rev_iterator_index=rev_line_index
-                                  #print " theirs match_found in revert section at - " + str(rev_line_index)
-                                  break
-                              for each_ours_line in initial_ours_code_lines:
-                                if ''.join(each_ours_line.split()).strip().find(''.join(each_theirs_line.split()).strip()) > -1:
-                                  ours_rev_line_index=initial_ours_code_lines.index(each_ours_line)
-                                  ours_iterator_index=ours_rev_line_index
-                                  #print "theirs match_found in ours section at - " + str(ours_rev_line_index)
-                                  break
-                              if rev_iterator_index > -1 or ours_iterator_index > -1:
-                                rev_iterator_index=ours_iterator_index=-1
-                              #  #break
-                              #  #print each_theirs_line
-                              #  if temp_ours_code.find(each_theirs_line.strip())== -1:
-                              #    ours_code_lines.append(each_theirs_line)
-                              elif rev_iterator_index == -1 and ours_iterator_index == -1:
-                                #print each_theirs_line
-                                ours_code_lines.append(each_theirs_line)
-                        ours_code='\n'.join(ours_code_lines)
-                        str_file_list[match_index]=ours_code.strip()
                       else:
                         print "Nothing to be reverted"
                         str_file_list[match_index]=ours_code.strip()
+                      if theirs_obj:
+                        print "entered into theirs"
+                        print theirs_code_lines
+                        #theirs_section=theirs_obj.group()
+                        #theirs_code=theirs_section.lstrip('=======').rstrip('>>>>>>>')
+                        #theirs_code_lines=theirs_code.splitlines()
+                        #theirs_code_lines=[value for value in theirs_code_lines if value.strip() != '' ]
+                        print "length of theirs " + str(len(theirs_code_lines))
+                        if len(theirs_code_lines) > 0:
+                          for each_theirs_line in theirs_code_lines:
+                            for each_rev_line in to_be_reverted_code_lines:
+                              if ''.join(each_rev_line.split()).strip().find(''.join(each_theirs_line.split()).strip()) > -1:
+                                rev_line_index=to_be_reverted_code_lines.index(each_rev_line)
+                                rev_iterator_index=rev_line_index
+                                print " theirs match_found in revert section at - " + str(rev_line_index)
+                                break
+                            for each_ours_line in initial_ours_code_lines:
+                              if ''.join(each_ours_line.split()).strip().find(''.join(each_theirs_line.split()).strip()) > -1:
+                                ours_rev_line_index=initial_ours_code_lines.index(each_ours_line)
+                                ours_iterator_index=ours_rev_line_index
+                                print "theirs match_found in ours section at - " + str(ours_rev_line_index)
+                                break
+                            if rev_iterator_index > -1 or ours_iterator_index > -1:
+                              rev_iterator_index=ours_iterator_index=-1
+                            #  #break
+                            #  print each_theirs_line
+                            #  if temp_ours_code.find(each_theirs_line.strip())== -1:
+                            #    ours_code_lines.append(each_theirs_line)
+                            elif rev_iterator_index == -1 and ours_iterator_index == -1:
+                              print each_theirs_line
+                              ours_code_lines.append(each_theirs_line)
+                      ours_code='\n'.join(ours_code_lines)
+                      str_file_list[match_index]=ours_code.strip()
               print "Code Reversion is finished  for the commit id - "+each_commit
+            else:
+              print "no conflict removing the coomit id"
             if 0 < len(str_file_list) < 2:
               code_str=str_file_list[0]
-              #print code_str
+              print code_str
             else:
               code_str='\n'.join(str_file_list)
             file_str=code_str
@@ -313,15 +319,29 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
             fp.close()
             print"Code is ready to for git add"
             #breakpoint=input("Hi, press enter")
+            os.system('git status')
+            print "status checked"
+            #cmd_com = 'git diff-index --quiet HEAD -- |grep "untracked"'
+            #rev_com=subprocess.Popen(cmd_com,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0]
+            #rev_com = os.system('git diff-index --quiet HEAD -- |grep "untracked"')
+            print "diff tree checked"
+            #print rev_com
             os.system('git add '+each_sending_file)
+            print each_sending_file+"file added"
+            os.system('git status')
+            print "status checked 2"
             os.system('git config --global user.email "libertyglobal-bss-clarify-internal@accenture.com"')
             os.system('git config --global user.name "LibertyGlobal-BSS-Clarify Workspace Internal User"')
             sha_msg='"De-consolidating '+rm_to_be_removed[3:]+' for '+rm_to_be_sent+'"'
+            print sha_msg
             rev_comm_rc=os.system('git commit -m '+sha_msg)
+            print "commit happen"
+            print rev_comm_rc
             if rev_comm_rc > 0:
               flag=False
               msg=rm_to_be_removed + 'is not de-conslidated from '+rm_to_be_sent+' as there was ERROR occured while deconsoidating a common file in '+each_repo
               cdc_output_list.append(msg)
+              print msg
               return msg
               break
             sending_rm_HEAD_cmd='git rev-parse HEAD | cut -c 1-7'
@@ -337,6 +357,9 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
       #sha_msg_commit=subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].strip()
       os.system('git push origin '+sending_rm_branch)
       # Creating New Tag for De-Consolidated Code based on the old tag
+      if not str(existing_tag_of_sending_rm):
+        existing_tag_of_sending_rm_cmd="git for-each-ref --sort=-taggerdate --format '%(refname) %(contents:subject)' refs/tags | grep -i '"+rm_to_be_sent+"' | awk '{print $1}'"
+        existing_tag_of_sending_rm=str(subprocess.check_output(existing_tag_of_sending_rm_cmd, shell=True).split('\n')[0]).split('refs/tags/')[-1]
       if existing_tag_of_sending_rm.find('.') > 0:
         latest_tag_of_sending_rm=existing_tag_of_sending_rm.rsplit('.',1)[0]+'.'+str(int(existing_tag_of_sending_rm.rsplit('.',1)[1])+1)
         os.system('git tag -a '+latest_tag_of_sending_rm+' -m "Tagging for '+rm_to_be_sent+' to deliver '+sending_rm_branch+'"')
@@ -363,12 +386,17 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
           for each_file in commit_specific_file_list:
             if not each_file in removing_file_list:
               os.system('git reset HEAD '+each_file)
-              os.system('git checkout -- '+each_file)
+              ck_status=os.system('git checkout -- '+each_file)
+              if ck_status > 0:
+                git_rm_command_status=os.system('git rm '+each_file)
+                if git_rm_command_status > 0:
+                  os.system('rm -f '+each_file)
       con_sha_msg='"Consolidating '+rm_to_be_sent[3:]+' for '+rm_to_be_added+'"'
-      consolidation_rc=os.system('git commit -m '+con_sha_msg)
+      consolidation_rc=os.system('git commit --allow-empty -m '+con_sha_msg)
       if consolidation_rc > 0:
         #consolidation_flag=False
         msg=rm_to_be_sent + 'is not conslidated onto '+rm_to_be_removed+' as there was ERROR occured while consoidating a common file in '+each_repo
+        print msg
         cdc_output_list.append(msg)
         break
       os.system('git push origin '+adding_rm_branch)
@@ -378,6 +406,9 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
       print "removing tagged commit sha : "+removing_tagged_commit_sha
       existing_tag_of_adding_rm=subprocess.Popen("git tag --sort=-taggerdate --points-at "+ removing_tagged_commit_sha.strip()+" | head -1", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].strip()
       print "existing tag of adding rm : "+existing_tag_of_adding_rm
+      if not str(existing_tag_of_adding_rm):
+        existing_tag_of_adding_rm_cmd="git for-each-ref --sort=-taggerdate --format '%(refname) %(contents:subject)' refs/tags | grep -i '"+rm_to_be_removed+"' | awk '{print $1}'"
+        existing_tag_of_adding_rm=str(subprocess.check_output(existing_tag_of_adding_rm_cmd, shell=True).split('\n')[0]).split('refs/tags/')[-1]
       if existing_tag_of_adding_rm.find('.') > 0:
         latest_tag_of_adding_rm=existing_tag_of_adding_rm.rsplit('.',1)[0]+'.'+str(int(existing_tag_of_adding_rm.rsplit('.',1)[1])+1)
         os.system('git tag -a '+latest_tag_of_adding_rm+' -m "Tagging for '+rm_to_be_added+' to deliver '+adding_rm_branch+'"')
@@ -413,11 +444,23 @@ def main_func(affiliate, rm_string):
     global coll_handler
     global cdc_output_list
     cdc_output_list=[]
+    input_rm_list=rm_string.strip().split()
     country=affiliate
+    colcdc= db['cdc-tracker']
+    cdc_date_stamp = datetime.datetime.now()
+    cdc_run_date="cdc_"+str(cdc_date_stamp.strftime('%Y_%m_%d_%H_%M_%S'))
+    cdctracker_dict={
+                    "_id" :cdc_run_date,
+                    "affiliate" :affiliate,
+                    "input_RM_List" :input_rm_list,
+                    "status":"Initiated"
+                     }
+    #cdctracker_json_string= json.dumps(cdctracker_dict)
+    print cdctracker_dict
+    colcdc.insert_one(cdctracker_dict)
     coll_handler=db[country+'-ci']
     os.chdir('/clarify_cdc')
     rm_time_dict={}
-    input_rm_list=rm_string.strip().split()
     for each_rm in input_rm_list:
       try:
         rm_dict=coll_handler.find_one({'RM_ID.'+each_rm : { '$exists' : True }},  {'RM_ID.'+each_rm : 1})
@@ -425,12 +468,23 @@ def main_func(affiliate, rm_string):
         print e
         print "Please perform CI for this ticket - "+each_rm+", then only CDC tool will work as expected"
         return ["Please perform CI for this ticket - "+each_rm+", then only CDC tool will work as expected"]
+      rm_dict_list=coll_handler.find({'RM_ID.'+each_rm : { '$exists' : True }},  {'RM_ID.'+each_rm : 1})
+      fisrt_release_date=datetime.datetime.strptime(rm_dict['RM_ID'][each_rm]['build_time'], '%Y_%m_%d_%H_%M_%S')
+      print fisrt_release_date
+      for each_rm_doc in rm_dict_list:
+        release_date = datetime.datetime.strptime(each_rm_doc['RM_ID'][each_rm]['build_time'], '%Y_%m_%d_%H_%M_%S')
+        print release_date
+        if release_date > fisrt_release_date:
+          rm_dict=each_rm_doc
+          fisrt_release_date=release_date
       if not rm_dict is None:
         rm_time_dict[datetime.datetime.strptime(rm_dict['RM_ID'][each_rm]['build_time'], '%Y_%m_%d_%H_%M_%S').ctime()]=each_rm
+        print each_rm+ " : "+rm_dict['RM_ID'][each_rm]['release_version']
     print rm_time_dict
     dates_list=rm_time_dict.keys()
     dates_list.sort(key=lambda date: datetime.datetime.strptime(date, '%a %b  %d %H:%M:%S %Y'))
     sorted_dates_list=dates_list
+    print sorted_dates_list
     sorted_rm_list=[rm_time_dict[each_date] for each_date in sorted_dates_list]
     print "Developed Order : "+str(sorted_rm_list)
 
@@ -445,14 +499,27 @@ def main_func(affiliate, rm_string):
         print str(temp_dc_list)+" to be deconsolidated from "+each_rm
         for each_dc_rm in temp_dc_list:
           cdc_output=cdc(each_rm, each_dc_rm)
-          if cdc_output.find('ERROR'):
+          if cdc_output.find('ERROR') > -1:
+            print "error occoured. break loop stage1"
             break
         cdc_rm_list.append(each_rm)
       else:
         cdc_output_list.append("development and deployment order is same for "+each_rm)
-      if cdc_output.find('ERROR'):
+        print "development and deployment order is same for "+each_rm
+      if cdc_output.find('ERROR') > -1:
+        print "error occoured. break loop stage2"
+        cdctracker_dict["status"]="Failed"
+        colcdc.remove({"_id": cdc_run_date})
+        colcdc.insert_one(cdctracker_dict)
+        print cdctracker_dict
         break
+      print "completed RM:"+each_rm
       sorted_rm_list.remove(each_rm)
+    cdctracker_dict["status"]="Success"
+    print cdctracker_dict
+    colcdc.remove({"_id": cdc_run_date})
+    print "record deleted"
+    colcdc.insert_one(cdctracker_dict)
     return cdc_output_list
 
 def perform_build(cdc_rm_list):
@@ -476,7 +543,7 @@ app.layout = html.Div([
         }
        ),
         html.Div([
-             html.H1(children='CLARIFY',style={'textAlign': 'center','color': '#157DEC'})
+             html.H1(children='CLARIFY',style={'textAlign': 'center','color': '#000000'})
            ],style={'padding-left':'400px','display':'inline-block','float':'left'}),
     #html.Br(),
         html.Img(
@@ -492,10 +559,10 @@ app.layout = html.Div([
     #html.Br(),
         #html.Br(),
     html.Div([
-        html.Div([html.H1(children='CODE  {...}',style={'padding-right':'8px','textAlign': 'center','color': '#FF8C00','display':'inline-block'} ),
-                html.H1(children='CONSOLIDATION (++)',style={'textAlign': 'center','color': '#006400','display':'inline-block'} ),
-                html.H1(children='(--) DE-CONSOLIDATION',style={'textAlign': 'center','color': '#A20606','display':'inline-block'} ),
-        ],style={'textAlign':'center'}),
+        html.Div([html.H1(children='CODE',style={'padding-right':'8px','textAlign': 'center','color': '#FFFFFF','display':'inline-block'} ),
+                html.H1(children='CONSOLIDATION',style={'padding-right':'8px','textAlign': 'center','color': '#FFFFFF','display':'inline-block'} ),
+                html.H1(children='& DE-CONSOLIDATION',style={'textAlign': 'center','color': '#FFFFFF','display':'inline-block'} ),
+        ],style={'textAlign':'center','backgroundColor':'#A6ACAF'}),
     html.Br(),
     html.Br(),
     html.Div(id='Affiliate_temp_store',style={'display':'none'}),
