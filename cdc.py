@@ -143,10 +143,10 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
         os.system('git config merge.conflictstyle diff3')
         print "I'm about to start deconsolidation"
         existing_tag_of_sending_rm=subprocess.Popen("git tag --sort=-taggerdate --points-at "+sending_tagged_commit_sha.strip()+" | head -1", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0]
-
+        
         file_specific_send_commit_cmd="git log --no-merges --format='%h %s' "+each_sending_file+" | grep "+rm_to_be_sent+" | awk -F' ' '{print $1}'"
         print file_specific_send_commit_cmd
-
+        
         file_specific_send_commit_list=subprocess.Popen(file_specific_send_commit_cmd,shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0].splitlines()
         #avoid common commits between sending rm and removal rm
         removal_rm_committed_code_dict={}
@@ -450,7 +450,7 @@ def main_func(affiliate, rm_string):
     cdc_date_stamp = datetime.datetime.now()
     cdc_run_date="cdc_"+str(cdc_date_stamp.strftime('%Y_%m_%d_%H_%M_%S'))
     cdctracker_dict={
-                    "_id" :cdc_run_date,
+                    "_id" :cdc_run_date, 
                     "affiliate" :affiliate,
                     "input_RM_List" :input_rm_list,
                     "status":"Initiated"
@@ -484,7 +484,7 @@ def main_func(affiliate, rm_string):
     dates_list=rm_time_dict.keys()
     dates_list.sort(key=lambda date: datetime.datetime.strptime(date, '%a %b  %d %H:%M:%S %Y'))
     sorted_dates_list=dates_list
-    print sorted_dates_list
+    print sorted_dates_list 
     sorted_rm_list=[rm_time_dict[each_date] for each_date in sorted_dates_list]
     print "Developed Order : "+str(sorted_rm_list)
 
@@ -549,8 +549,8 @@ app.layout = html.Div([
         html.Img(
         src='/img/logo-client-liberty-color.jpg',
         style={
-            'height' : '100%',
-            'width' : '12%',
+            'height' : '80%',
+            'width' : '10%',
             'display':'inline-block',
             'float':'right',
             'padding-right':'20px'
