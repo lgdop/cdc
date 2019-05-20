@@ -7,9 +7,9 @@ WORKDIR /clarify_cdc
 
 
 RUN virtualenv my27project && source my27project/bin/activate && python --version
-RUN pip2.7 install dash==0.35.1 \
-                dash-html-components==0.13.4 \
-                dash-core-components==0.42.1 \
+RUN pip2.7 install dash \
+                dash-html-components \
+                dash-core-components \
                 datetime \
                 pymongo \
                 hvac \
@@ -21,4 +21,4 @@ RUN mv /usr/bin/git /usr/bin/git_old && cd /usr/bin && ln -s /usr/local/git/bin/
 
 EXPOSE 3000
 
-CMD [ "gunicorn", "--bind", "0.0.0.0:3000", "cdc:server" ]
+CMD [ "gunicorn", "--bind", "0.0.0.0:3000","--timeout","1200", "cdc:server" ]
