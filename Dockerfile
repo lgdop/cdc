@@ -21,4 +21,4 @@ RUN mv /usr/bin/git /usr/bin/git_old && cd /usr/bin && ln -s /usr/local/git/bin/
 
 EXPOSE 3000
 
-CMD [ "gunicorn", "--bind", "0.0.0.0:3000","--timeout","1200", "cdc:server" ]
+CMD [ "gunicorn", "--bind", "0.0.0.0:3000","--timeout","10000", "cdc:server" ]

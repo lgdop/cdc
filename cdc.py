@@ -197,8 +197,8 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
             str_file_list=re.split(r'(<{7} HEAD(\n.*?)+\|{7} '+each_commit+r'\.\.\. '+each_commit_msg+r'(\n.*?)+\={7}(\n.*?)+>{7} parent of '+each_commit+r'\.\.\. '+each_commit_msg+r')', big_string)
             regex=r'(<{7} HEAD(\n.*?)+\|{7} '+each_commit+r'\.\.\. '+each_commit_msg+r'(\n.*?)+\={7}(\n.*?)+>{7} parent of '+each_commit+r'\.\.\. '+each_commit_msg+r')'
             ours_regex=r'\<{7} HEAD(\n.*?)+\|{7}'
-            print "lenght of the str_file_list - "+str(len(str_file_list))
-            print str_file_list
+            #print "lenght of the str_file_list - "+str(len(str_file_list))
+            #print str_file_list
             print "number of patterns observed - "+str(len(str_file_list))
             if git_revert_cmd_output.find('conflicts') > -1:
               print "Started working on the conflicts resolution"
@@ -230,7 +230,7 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
                         theirs_code=theirs_section.lstrip('=======').rstrip('>>>>>>>')
                         theirs_code_lines=theirs_code.splitlines()
                         #theirs_code_lines=[value for value in theirs_code_lines if value.strip() != '' ]
-                      print "length of to_be_reverted_lines - "+ str(len(to_be_reverted_code_lines))
+                      #print "length of to_be_reverted_lines - "+ str(len(to_be_reverted_code_lines))
                       line_index_dict={}
                       if len(to_be_reverted_code_lines) > 0:
                         for each_rev_line in to_be_reverted_code_lines:
@@ -239,27 +239,27 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
                               iterator_index=ours_code_lines[iterator_index+1:].index(each_our_line)+iterator_index+1
                               line_index_dict[iterator_index]=each_our_line
                               if theirs_obj:
-                                print "length of theirs " + str(len(theirs_code_lines))
+                                #print "length of theirs " + str(len(theirs_code_lines))
                                 if len(theirs_code_lines) > 0:
-                                  print line_index_dict
-                                  print type(line_index_dict.keys()[0])
+                                  #print line_index_dict
+                                  #print type(line_index_dict.keys()[0])
                                   for each_theirs_line in theirs_code_lines:
                                     if ''.join(each_rev_line.split()).strip() == ''.join(each_theirs_line.split()).strip():
-                                      print line_index_dict
+                                      #print line_index_dict
                                       line_index_dict.pop(iterator_index)
                                       break
-                                  print line_index_dict
+                                  #print line_index_dict
                                   break
                           #else:
-                            print each_rev_line + " is not found in ours_code_lines"
+                            #print each_rev_line + " is not found in ours_code_lines"
 
                       if len(line_index_dict.keys()) > 0:
-                        print "length of the index_dict - " +str(len(line_index_dict))
-                        print "length of ours_code_lines - "+str(len(ours_code_lines))
+                        #print "length of the index_dict - " +str(len(line_index_dict))
+                        #print "length of ours_code_lines - "+str(len(ours_code_lines))
                         rev_counter=0
                         for each_key in line_index_dict.keys():
-                          print each_key
-                          print ours_code_lines[each_key-rev_counter]
+                          #print each_key
+                          #print ours_code_lines[each_key-rev_counter]
                           ours_code_lines.pop(each_key-rev_counter)
                           rev_counter=rev_counter+1
                         #temp_ours_code='\n'.join(ours_code_lines)
@@ -268,25 +268,25 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
                         str_file_list[match_index]=ours_code.strip()
                       if theirs_obj:
                         print "entered into theirs"
-                        print theirs_code_lines
+                        #print theirs_code_lines
                         #theirs_section=theirs_obj.group()
                         #theirs_code=theirs_section.lstrip('=======').rstrip('>>>>>>>')
                         #theirs_code_lines=theirs_code.splitlines()
                         #theirs_code_lines=[value for value in theirs_code_lines if value.strip() != '' ]
-                        print "length of theirs " + str(len(theirs_code_lines))
+                        #print "length of theirs " + str(len(theirs_code_lines))
                         if len(theirs_code_lines) > 0:
                           for each_theirs_line in theirs_code_lines:
                             for each_rev_line in to_be_reverted_code_lines:
                               if ''.join(each_rev_line.split()).strip().find(''.join(each_theirs_line.split()).strip()) > -1:
                                 rev_line_index=to_be_reverted_code_lines.index(each_rev_line)
                                 rev_iterator_index=rev_line_index
-                                print " theirs match_found in revert section at - " + str(rev_line_index)
+                                #print " theirs match_found in revert section at - " + str(rev_line_index)
                                 break
                             for each_ours_line in initial_ours_code_lines:
                               if ''.join(each_ours_line.split()).strip().find(''.join(each_theirs_line.split()).strip()) > -1:
                                 ours_rev_line_index=initial_ours_code_lines.index(each_ours_line)
                                 ours_iterator_index=ours_rev_line_index
-                                print "theirs match_found in ours section at - " + str(ours_rev_line_index)
+                                #print "theirs match_found in ours section at - " + str(ours_rev_line_index)
                                 break
                             if rev_iterator_index > -1 or ours_iterator_index > -1:
                               rev_iterator_index=ours_iterator_index=-1
@@ -295,16 +295,16 @@ def cdc(rm_to_be_sent, rm_to_be_removed):
                             #  if temp_ours_code.find(each_theirs_line.strip())== -1:
                             #    ours_code_lines.append(each_theirs_line)
                             elif rev_iterator_index == -1 and ours_iterator_index == -1:
-                              print each_theirs_line
+                              #print each_theirs_line
                               ours_code_lines.append(each_theirs_line)
                       ours_code='\n'.join(ours_code_lines)
                       str_file_list[match_index]=ours_code.strip()
               print "Code Reversion is finished  for the commit id - "+each_commit
             else:
-              print "no conflict removing the coomit id"
+              print "no conflict removing the commit id"
             if 0 < len(str_file_list) < 2:
               code_str=str_file_list[0]
-              print code_str
+              #print code_str
             else:
               code_str='\n'.join(str_file_list)
             file_str=code_str
